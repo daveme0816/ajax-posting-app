@@ -3,7 +3,17 @@ class PostsController < ApplicationController
     before_action :authenticate_user!, :only => [:create, :destroy]
 
     def index
-        @posts = Post.order("id DESC").all
+        # @posts = Post.order("id DESC").all
+        @posts = Post.order("id DESC").limit(20)
+
+        if params[:max_id]
+            @posts = @posts.where( "id < ?", params[:max_id])
+        end
+
+        respond_to do |format|
+            format.html  # 如果客户端要求 HTML，则回传 index.html.erb
+            format.js    # 如果客户端要求 JavaScript，回传 index.js.erb
+        end
     end
     def new
         @post = Post.new(post_params)
@@ -17,10 +27,20 @@ class PostsController < ApplicationController
         # redirect_to posts_path
     end
 
+    def update
+        
+        @post = Post.find(params[:id])
+        @post.update!( post_params )
+
+        render :json => { :id => @post.id, :message => "ok"}
+    end
+    
+
     def destroy
+        
         @post = current_user.posts.find(params[:id]) # 只能删除自己的贴文
         @post.destroy
-
+        render :json => { :id => @post.id }
         # redirect_to posts_path
         # render :js => "alert('OK')"
     end
@@ -42,10 +62,25 @@ class PostsController < ApplicationController
     #   redirect_to posts_path
    end
 
+  def toggle_flag
+    @post = Post.find(params[:id])
+
+    if @post.flag_at
+      @post.flag_at = nil
+    else
+      @post.flag_at = Time.now
+    end
+
+    @post.save!
+
+    render :json => { :message => "ok", :flag_at => @post.flag_at, :id => @post.id }
+  end
+
     protected
 
     def post_params
-        params.require(:post).permit(:content)
+        params.require(:post).permit(:content, :category_id)
+
     end
 
 end
